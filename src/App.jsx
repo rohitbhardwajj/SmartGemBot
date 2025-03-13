@@ -1,6 +1,6 @@
 import React from 'react'
 import Nav from './component/Nav'
-import Body from './component/body'
+import Body from './component/Body'
 
 const App = () => {
   return (
