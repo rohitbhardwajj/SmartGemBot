@@ -10,7 +10,9 @@ const Body = () => {
     const [stopTyping, setStopTyping] = useState(false); // Stop typing state
     const typingIntervalRef = useRef(null); // Ref to store the interval ID
 
-    const genAI = new GoogleGenerativeAI("AIzaSyAdtsEDWlJmMYPYL_kKaHKEwQBdoZEeRfg");
+    // ✅ Load API Key from .env file
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const sendMessage = async () => {
@@ -22,19 +24,26 @@ const Body = () => {
             setStopTyping(false); // Reset stop typing state
 
             try {
-                const result = await model.generateContent(prompt);
+                const result = await model.generateContent({
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                    generationConfig: { responseMimeType: "text/plain" } // Get plain text response
+                });
+
                 const response = await result.response.text();
+
+                // ✅ Remove unwanted Markdown symbols (bold, italic, etc.)
+                const cleanResponse = response.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
 
                 // Simulate typing effect
                 let index = 0;
                 typingIntervalRef.current = setInterval(() => {
-                    if (index < response.length && !stopTyping) {
-                        setTypingResponse((prev) => prev + response.charAt(index));
+                    if (index < cleanResponse.length && !stopTyping) {
+                        setTypingResponse((prev) => prev + cleanResponse.charAt(index));
                         index++;
                     } else {
                         clearInterval(typingIntervalRef.current); // Clear interval
                         setIsLoading(false); // Stop loading
-                        setMessages((prev) => [...prev, { text: response, sender: 'bot' }]);
+                        setMessages((prev) => [...prev, { text: cleanResponse, sender: 'bot' }]);
                         setTypingResponse(''); // Reset typing response
                     }
                 }, 10); // Adjust typing speed (milliseconds)
@@ -79,7 +88,7 @@ const Body = () => {
                     <div className="bot-message">...</div> // Show "..." while loading
                 )}
                 {typingResponse && (
-                    <div className="bot-messagee">{typingResponse}</div> // Show typing response
+                    <div className="bot-message">{typingResponse}</div> // Show typing response
                 )}
             </div>
             <div className="input">
